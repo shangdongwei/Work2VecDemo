@@ -1,4 +1,4 @@
-# RAG系统依赖包
+# RAG系统依赖包 - 增强版本
 gensim==4.3.2
 faiss-cpu==1.7.4
 numpy==1.24.3
@@ -9,3 +9,18 @@ torch==2.1.0
 dashscope==1.17.0
 jieba==0.42.1
 tqdm==4.66.1
+
+# OpenAI相关依赖
+openai>=1.0.0
+chardet==5.2.0
+
+# 增强功能依赖
+sentence-transformers==2.2.2
+rank-bm25==0.2.2
+rouge-score==0.1.2
+sumy==0.11.0
+textblob==0.17.1
+flask==2.3.3
+
+# 其他工具
+pathlib2==2.3.7
