@@ -724,10 +724,10 @@ public class JiraApiClient {
     public static void main(String[] args) {
         try {
             // 配置JIRA连接信息
-            String jiraUrl = "https://your-jira-instance.com";
-            String username = "your-username";
-            String apiToken = "your-api-token";
-            String projectKey = "YOUR_PROJECT_KEY";
+            String jiraUrl = "https://wpb-jira.system.uk.hsbc/";
+            String username = "45457904";
+            String apiToken = "Sdw190310!";
+            String projectKey = "AIWPB-78";
             
             // 创建JIRA客户端
             JiraApiClient jiraClient = new JiraApiClient(jiraUrl, username, apiToken);
@@ -735,14 +735,14 @@ public class JiraApiClient {
             System.out.println("=== JIRA API 测试开始 ===");
             
             // 1. 获取创建元数据
-            System.out.println("\n1. 获取创建元数据...");
-            try {
-                JSONObject metadata = jiraClient.getCreateMetadata(projectKey, ISSUE_TYPE_TASK);
-                System.out.println("创建元数据获取成功");
-                System.out.println("项目数量: " + metadata.getJSONArray("projects").length());
-            } catch (Exception e) {
-                System.err.println("获取元数据失败: " + e.getMessage());
-            }
+            // System.out.println("\n1. 获取创建元数据...");
+            // try {
+            //     JSONObject metadata = jiraClient.getCreateMetadata(projectKey, ISSUE_TYPE_TASK);
+            //     System.out.println("创建元数据获取成功");
+            //     System.out.println("项目数量: " + metadata.getJSONArray("projects").length());
+            // } catch (Exception e) {
+            //     System.err.println("获取元数据失败: " + e.getMessage());
+            // }
             
             // 2. 创建Task
             System.out.println("\n2. 创建Task...");
