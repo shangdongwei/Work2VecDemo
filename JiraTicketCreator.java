@@ -127,6 +127,112 @@ public class JiraTicketCreator {
     }
     
     /**
+     * 获取创建元数据
+     * 用于检查项目和工单类型的必填字段
+     */
+    private JsonNode getCreateMetadata(String projectKey, TicketType ticketType) {
+        try {
+            // 构建请求URL
+            StringBuilder url = new StringBuilder(baseUrl);
+            url.append("/rest/api/3/issue/createmeta?expand=projects.issuetypes.fields");
+            url.append("&projectKeys=").append(projectKey);
+            url.append("&issuetypeNames=").append(ticketType.getJiraTypeName());
+            
+            // 发送请求
+            HttpGet httpGet = new HttpGet(url.toString());
+            httpGet.setHeader("Authorization", authHeader);
+            httpGet.setHeader("Accept", "application/json");
+            
+            HttpResponse response = httpClient.execute(httpGet);
+            String responseBody = EntityUtils.toString(response.getEntity());
+            
+            if (response.getStatusLine().getStatusCode() == 200) {
+                return objectMapper.readTree(responseBody);
+            } else {
+                System.err.println("Failed to get create metadata: " + responseBody);
+                return null;
+            }
+        } catch (Exception e) {
+            System.err.println("Error getting create metadata: " + e.getMessage());
+            return null;
+        }
+    }
+    
+    /**
+     * 验证必填字段
+     * 返回缺失的必填字段列表，如果没有缺失字段则返回null
+     */
+    private List<String> validateRequiredFields(TicketRequest request) {
+        try {
+            // 获取创建元数据
+            JsonNode metadata = getCreateMetadata(request.getProjectKey(), request.getTicketType());
+            if (metadata == null) {
+                // 如果无法获取元数据，返回null（无法验证）
+                return null;
+            }
+            
+            // 解析必填字段
+            List<String> missingFields = new ArrayList<>();
+            JsonNode projects = metadata.get("projects");
+            if (projects != null && projects.isArray() && projects.size() > 0) {
+                JsonNode issueTypes = projects.get(0).get("issuetypes");
+                if (issueTypes != null && issueTypes.isArray() && issueTypes.size() > 0) {
+                    JsonNode fields = issueTypes.get(0).get("fields");
+                    if (fields != null && fields.isObject()) {
+                        // 遍历所有字段
+                        fields.fieldNames().forEachRemaining(fieldName -> {
+                            JsonNode field = fields.get(fieldName);
+                            boolean required = field.has("required") && field.get("required").asBoolean();
+                            if (required) {
+                                // 检查必填字段是否已设置
+                                if (!isFieldSet(request, fieldName)) {
+                                    String fieldDisplayName = field.has("name") ? field.get("name").asText() : fieldName;
+                                    missingFields.add(fieldDisplayName);
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+            
+            return missingFields.isEmpty() ? null : missingFields;
+        } catch (Exception e) {
+            System.err.println("Error validating required fields: " + e.getMessage());
+            return null;
+        }
+    }
+    
+    /**
+     * 检查字段是否已设置
+     */
+    private boolean isFieldSet(TicketRequest request, String fieldName) {
+        switch (fieldName) {
+            case "project":
+                return request.getProjectKey() != null && !request.getProjectKey().isEmpty();
+            case "summary":
+                return request.getSummary() != null && !request.getSummary().isEmpty();
+            case "description":
+                return request.getDescription() != null && !request.getDescription().isEmpty();
+            case "issuetype":
+                return request.getTicketType() != null;
+            case "reporter":
+                return request.getReporter() != null && !request.getReporter().isEmpty();
+            // 处理自定义字段
+            case "customfield_10020":
+            case "customfield_10021":
+                // Sprint字段
+                return request.getSprintId() != null && !request.getSprintId().isEmpty();
+            case "customfield_10016":
+            case "customfield_10017":
+                // Story Points字段
+                return request.getStoryPoints() != null && request.getStoryPoints() > 0;
+            default:
+                // 对于未知字段，默认认为已设置（不阻止创建）
+                return true;
+        }
+    }
+    
+    /**
      * 创建JIRA工单
      */
     public TicketResponse createTicket(TicketRequest request) {
@@ -137,6 +243,13 @@ public class JiraTicketCreator {
                     return new TicketResponse(false, null, 
                         "Sorry, the selected project does not have this configuration.");
                 }
+            }
+            
+            // 验证必填字段
+            List<String> missingFields = validateRequiredFields(request);
+            if (missingFields != null && !missingFields.isEmpty()) {
+                return new TicketResponse(false, null, 
+                    "Missing required fields: " + String.join(", ", missingFields));
             }
             
             // 构建创建工单的JSON请求体
